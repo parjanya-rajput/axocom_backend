@@ -1,0 +1,72 @@
+services:
+  mysql:
+    image: mysql:8
+    container_name: axocom_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: axocom
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./database/db_data:/var/lib/mysql
+      # - ./src/database/01-tables.sql:/docker-entrypoint-initdb.d/01-tables.sql
+      # - ./src/database/02-data.sql:/docker-entrypoint-initdb.d/02-data.sql
+      # - ./src/database/03-dump.sql:/docker-entrypoint-initdb.d/03-dump.sql
+    tmpfs:
+      - /var/run/mysqld
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u$${MYSQL_USER}",
+          "-p$${MYSQL_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: axocom-backend
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NODE_NO_WARNINGS: 1
+      DB_HOST: mysql
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: axocom
+      DB_PORT: 3306
+      PORT: 3000
+      CONTAINER_NAME: images
+      AZURE_STORAGE_CONNECTION_STRING: your_azure_storage_connection_string
+      FILE_CREATION_SECRET_KEY: your_file_creation_secret_key
+      CORS_ORIGIN: "*"
+      JWT_EXPIRES_IN: 36w
+      JWT_SECRET: your_jwt_secret_key
+      SMTP_HOST: smtp.mailtrap.io
+      SMTP_PORT: 2525
+      SMTP_USER: your_smtp_user
+      SMTP_PASSWORD: your_smtp_password
+
+    volumes:
+      - ./src:/app/src
+    command: ["npm", "run", "dev"]
+
+volumes:
+  db_data:

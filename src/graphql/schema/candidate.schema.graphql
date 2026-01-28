@@ -1,0 +1,102 @@
+"""
+Arbitrary JSON value (stored as MySQL JSON).
+Implement with a GraphQL JSON scalar in your server.
+"""
+scalar JSON
+
+"""
+ISO datetime (maps to JS Date, stored as MySQL DATETIME).
+Implement with a DateTime scalar in your server.
+"""
+scalar DateTime
+
+type Candidate {
+  id: Int!
+  neta_id: Int!
+  name: String!
+  so_do_wo: String
+  age: Int!
+  candidate_image: String
+  assembly_constituency: String!
+  party: String!
+  name_enrolled_as_voter_in: String!
+  self_profession: String
+  spouse_profession: String
+  criminal_cases: Int
+  assets: Float
+  liabilities: Float
+  education_category: String
+  university_name: String
+  pan_itr: JSON
+  details_of_criminal_cases: JSON
+  details_of_movable_assets: JSON
+  details_of_immovable_assets: JSON
+  details_of_liabilities: JSON
+  source_of_income: JSON
+  contracts: JSON
+  social_profiles: JSON
+  created_at: DateTime!
+}
+
+input CreateCandidateInput {
+  neta_id: Int!
+  name: String!
+  so_do_wo: String
+  age: Int!
+  candidate_image: String
+  assembly_constituency: String!
+  party: String!
+  name_enrolled_as_voter_in: String!
+  self_profession: String
+  spouse_profession: String
+  criminal_cases: Int
+  assets: Float
+  liabilities: Float
+  education_category: String
+  university_name: String
+  pan_itr: JSON
+  details_of_criminal_cases: JSON
+  details_of_movable_assets: JSON
+  details_of_immovable_assets: JSON
+  details_of_liabilities: JSON
+  source_of_income: JSON
+  contracts: JSON
+  social_profiles: JSON
+}
+
+input UpdateCandidateInput {
+  neta_id: Int
+  name: String
+  so_do_wo: String
+  age: Int
+  candidate_image: String
+  assembly_constituency: String
+  party: String
+  name_enrolled_as_voter_in: String
+  self_profession: String
+  spouse_profession: String
+  criminal_cases: Int
+  assets: Float
+  liabilities: Float
+  education_category: String
+  university_name: String
+  pan_itr: JSON
+  details_of_criminal_cases: JSON
+  details_of_movable_assets: JSON
+  details_of_immovable_assets: JSON
+  details_of_liabilities: JSON
+  source_of_income: JSON
+  contracts: JSON
+  social_profiles: JSON
+}
+
+type Query {
+  candidate(id: Int!): Candidate
+  candidates: [Candidate!]!
+}
+
+type Mutation {
+  createCandidate(input: CreateCandidateInput!): Candidate!
+  updateCandidate(id: Int!, input: UpdateCandidateInput!): Candidate!
+  deleteCandidate(id: Int!): Boolean!
+}

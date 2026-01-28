@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+
+# TypeScript build output
+dist/
+database/
+src/config/env.ts
+build/
+*.js
+*.js.map
+
+# Local environment configs
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker containers volumes (optional if bind mounts used)
+docker/mysql_data/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# VSCode settings (optional)
+.vscode/
+
+# Coverage reports
+coverage/
+
+# Postman files (if generated)
+*.postman_collection.json
+*.postman_environment.json
+
+# Misc
+*.swp
+*.swo
+*.bak
