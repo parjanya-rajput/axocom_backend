@@ -1,30 +1,96 @@
 import { ApolloServer } from '@apollo/server';
+import http from "http";
 import { startStandaloneServer } from '@apollo/server/standalone';
 import { readFileSync } from 'fs';
+import cookieParser from "cookie-parser";
 import { join } from 'path';
-import { PORT } from './config/env';
-import { connectToDatabase } from './database/db';
+import { CORS_ORIGIN, PORT } from './config/env';
+import { connectToDatabase } from './dataconfig/db';
 import { candidateResolvers } from './graphql/resolvers/candidate.resolver';
+import express from 'express';
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import { expressMiddleware } from '@as-integrations/express5';
+import { limiter } from './middleware/ratelimit.middleware';
+import cors from 'cors';
+import { buildGraphQL } from './graphql/loaders/graphql.loader';
+import { notFoundHandler } from './middleware/error.middleware';
+import candidateRouter from './rest/routes/candidate.route';
+
+// async function startGraphQLServer() {
+//     const typeDefs = readFileSync(
+//         join(process.cwd(), 'src/graphql/schema/candidate.schema.graphql'),
+//         'utf-8'
+//     );
+
+//     const apolloServer = new ApolloServer({
+//         typeDefs,
+//         resolvers: candidateResolvers,
+//     });
+
+//     await connectToDatabase();
+//     console.log("Database connected");
+
+//     const { url } = await startStandaloneServer(apolloServer, {
+//         listen: { port: parseInt(PORT || '3000', 10) },
+//     });
+
+//     console.log(`Apollo Server is running on ${url}`);
+// }
+
+// startGraphQLServer();
 
 async function startServer() {
-    const typeDefs = readFileSync(
-        join(process.cwd(), 'src/graphql/schema/candidate.schema.graphql'),
-        'utf-8'
-    );
 
-    const apolloServer = new ApolloServer({
-        typeDefs,
-        resolvers: candidateResolvers,
+    const { typeDefs, resolvers } = buildGraphQL();
+
+
+    const app = express();
+    const httpServer = http.createServer(app);
+    app.use(cors({
+        origin: CORS_ORIGIN,
+        credentials: true
+    }));
+    app.use(limiter);
+    app.use(express.json({ limit: '10mb' }));
+    //process html data in to json form
+    app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    //to store user data  
+    app.use(cookieParser());
+
+
+    app.get('/health', (req, res) => {
+        res.json({ status: 'OK', timestamp: new Date().toISOString() });
     });
+    app.get('/', (_, res) => {
+        res.json({
+            success: true,
+            message: 'axocom api is running'
+        });
+    })
+
+    //routes
+    app.use('/api/candidates', candidateRouter);
+    // app.use('/api/voters', voterRoutes);
+
+    const apollo = new ApolloServer({
+        typeDefs,
+        resolvers,
+        plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+        // validationRules: [depthLimit(5)],
+        // introspection: process.env.NODE_ENV !== 'production',
+    });
+
+    await apollo.start();
+    app.use("/graphql", express.json(), expressMiddleware(apollo, {
+        context: async ({ req }) => ({ req }),
+    }));
 
     await connectToDatabase();
-    console.log("Database connected");
+    httpServer.listen(PORT);
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`GraphQL endpoint is running on http://localhost:${PORT}/graphql`);
 
-    const { url } = await startStandaloneServer(apolloServer, {
-        listen: { port: parseInt(PORT || '3000', 10) },
-    });
-
-    console.log(`Apollo Server is running on ${url}`);
+    app.use(notFoundHandler);
 }
 
 startServer();
