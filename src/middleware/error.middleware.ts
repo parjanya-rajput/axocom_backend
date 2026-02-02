@@ -19,53 +19,6 @@ export const errorHandler: ErrorRequestHandler = (
         query: req.query,
         timestamp: new Date().toISOString(),
     });
-
-    // Handle RequestError (our custom errors)
-    if (error instanceof RequestError) {
-        res.status(error.statusCode).json(
-            errorResponse(error.message, error.code)
-        );
-        return;
-    }
-
-    // Handle JWT specific errors
-    if (error.name === 'JsonWebTokenError') {
-        res.status(401).json(
-            errorResponse('Invalid authentication token', 20002)
-        );
-        return;
-    }
-
-    if (error.name === 'TokenExpiredError') {
-        res.status(401).json(
-            errorResponse('Authentication token has expired', 20003)
-        );
-        return;
-    }
-
-    // Handle database errors (MySQL/generic)
-    if (error.message.includes('ER_DUP_ENTRY')) {
-        res.status(409).json(
-            errorResponse('Duplicate entry detected', 10001)
-        );
-        return;
-    }
-
-    if (error.message.includes('ER_NO_REFERENCED_ROW')) {
-        res.status(400).json(
-            errorResponse('Referenced record not found', 10001)
-        );
-        return;
-    }
-
-    // Handle validation errors (if using express-validator)
-    if (error.name === 'ValidationError') {
-        res.status(422).json(
-            errorResponse(error.message, 10008)
-        );
-        return;
-    }
-
     // Handle syntax errors in JSON
     if (error instanceof SyntaxError && 'body' in error) {
         res.status(400).json(

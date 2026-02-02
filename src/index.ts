@@ -1,12 +1,12 @@
 import { ApolloServer } from '@apollo/server';
 import http from "http";
-import { startStandaloneServer } from '@apollo/server/standalone';
-import { readFileSync } from 'fs';
+// import { startStandaloneServer } from '@apollo/server/standalone';
+// import { readFileSync } from 'fs';
 import cookieParser from "cookie-parser";
-import { join } from 'path';
+// import { join } from 'path';
 import { CORS_ORIGIN, PORT } from './config/env';
 import { connectToDatabase } from './dataconfig/db';
-import { candidateResolvers } from './graphql/resolvers/candidate.resolver';
+// import { candidateResolvers } from './graphql/resolvers/candidate.resolver';
 import express from 'express';
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import { expressMiddleware } from '@as-integrations/express5';
@@ -14,7 +14,8 @@ import { limiter } from './middleware/ratelimit.middleware';
 import cors from 'cors';
 import { buildGraphQL } from './graphql/loaders/graphql.loader';
 import { notFoundHandler } from './middleware/error.middleware';
-import candidateRouter from './rest/routes/candidate.route';
+// import candidateRouter from './rest/routes/candidate.route';
+import { optionalAuth } from './middleware/auth.middleware';
 
 // async function startGraphQLServer() {
 //     const typeDefs = readFileSync(
@@ -69,7 +70,7 @@ async function startServer() {
     })
 
     //routes
-    app.use('/api/candidates', candidateRouter);
+    // app.use('/api/candidates', candidateRouter);
     // app.use('/api/voters', voterRoutes);
 
     const apollo = new ApolloServer({
@@ -81,9 +82,14 @@ async function startServer() {
     });
 
     await apollo.start();
-    app.use("/graphql", express.json(), expressMiddleware(apollo, {
-        context: async ({ req }) => ({ req }),
-    }));
+    app.use(
+        "/graphql",
+        express.json(),
+        optionalAuth,
+        expressMiddleware(apollo, {
+            context: async ({ req }) => ({ req, user: req.user ?? null }),
+        })
+    );
 
     await connectToDatabase();
     httpServer.listen(PORT);
