@@ -1,0 +1,19 @@
+"""
+ISO datetime (maps to JS Date, stored as MySQL DATETIME).
+Implement with a DateTime scalar in your server.
+"""
+scalar DateTime
+
+type ElectionResult {
+  id: Int!
+  election_candidate_id: Int!
+  votes_polled: Int!
+  rank: Int!
+  status: String!
+  created_at: DateTime!
+}
+
+type Query {
+  election_result(id: Int!): ElectionResult
+  election_results: [ElectionResult!]!
+}
