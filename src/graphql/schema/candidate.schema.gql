@@ -94,9 +94,3 @@ type Query {
   candidate(id: Int!): Candidate
   candidates: [Candidate!]!
 }
-
-type Mutation {
-  createCandidate(input: CreateCandidateInput!): Candidate!
-  updateCandidate(id: Int!, input: UpdateCandidateInput!): Candidate!
-  deleteCandidate(id: Int!): Boolean!
-}

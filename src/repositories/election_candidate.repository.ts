@@ -1,0 +1,52 @@
+import { db } from '../dataconfig/db';
+import { err, ok, Result } from "neverthrow";
+import createLogger from '../utils/logger';
+import { ERRORS, RequestError } from '../utils/error';
+import { ElectionCandidate, ELECTION_CANDIDATE_TABLE } from '../models/election_candidate.model';
+
+
+const logger = createLogger('@election_candidate.repository');
+
+// Repository class
+class ElectionCandidateRepository {
+    /**
+     * Get election candidate by ID
+     */
+    async getById(id: number): Promise<Result<ElectionCandidate | null, RequestError>> {
+        try {
+            const [rows] = await db.execute<ElectionCandidate[]>(
+                `SELECT * FROM ${ELECTION_CANDIDATE_TABLE} WHERE id = ?`,
+                [id]
+            );
+
+            if (rows.length === 0) {
+                return err(ERRORS.ELECTION_CANDIDATE_NOT_FOUND);
+            }
+
+            return ok(rows[0]);
+        } catch (error) {
+            logger.error('Error fetching election candidate by id:', error);
+            return err(ERRORS.DATABASE_ERROR);
+        }
+    }
+
+    /**
+     * Get all election candidates
+     */
+    async getAll(): Promise<Result<ElectionCandidate[], RequestError>> {
+        try {
+            const [rows] = await db.execute<ElectionCandidate[]>(
+                `SELECT * FROM ${ELECTION_CANDIDATE_TABLE} ORDER BY created_at DESC`
+            );
+            return ok(rows);
+        } catch (error) {
+            logger.error('Error fetching all election candidates:', error);
+            return err(ERRORS.DATABASE_ERROR);
+        }
+    }
+
+    // add pagination for getAll later
+}
+
+// Export singleton instance
+export const electionCandidateRepository = new ElectionCandidateRepository();

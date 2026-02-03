@@ -1,6 +1,8 @@
 import mysql from "mysql2/promise";
 import { NODE_ENV, DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER } from "../config/env";
+import createLogger from "../utils/logger";
 
+const logger = createLogger("@db");
 //  Export the pool for queries
 export const db = mysql.createPool({
     host: DB_HOST,
@@ -23,9 +25,9 @@ export const connectToDatabase = async () => {
         const connection = await db.getConnection();
         await connection.ping(); //  check connection
         connection.release();
-        console.log("✅ MySQL pool connected successfully in", NODE_ENV);
+        logger.info(`MySQL pool connected successfully in ${NODE_ENV}`);
     } catch (error) {
-        console.error("❌ Error connecting to MySQL pool:", error);
+        logger.error(`Error connecting to MySQL pool: ${String(error)}`);
         process.exit(1);
     }
 };

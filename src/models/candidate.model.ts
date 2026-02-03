@@ -3,7 +3,7 @@ import { RowDataPacket } from "mysql2";
 export const CREATE_CANDIDATE_TABLE = `
 CREATE TABLE candidates (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    neta_id INT NOT NULL, // Unique identifier for the candidate on the myneta info
+    neta_id INT NOT NULL, -- Unique identifier for the candidate on the myneta info
     name VARCHAR(255) NOT NULL,
     so_do_wo VARCHAR(255),
     age INT NOT NULL,

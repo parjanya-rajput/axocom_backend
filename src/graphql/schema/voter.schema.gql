@@ -1,0 +1,37 @@
+"""
+ISO datetime (maps to JS Date, stored as MySQL DATETIME).
+Implement with a DateTime scalar in your server.
+"""
+scalar DateTime
+
+type Voter {
+    id: Int!
+    epic_number: String!
+    first_name_english: String!
+    first_name_local: String!
+    last_name_english: String!
+    last_name_local: String!
+    gender: String!
+    age: Int!
+    relative_first_name_english: String!
+    relative_first_name_local: String!
+    relative_last_name_english: String!
+    relative_last_name_local: String!
+    state: String!
+    parliamentary_constituency: String!
+    assembly_constituency: String!
+    polling_station: String!
+    part_number_name: String!
+    part_serial_number: Int!
+    fetch_status: String!
+    fetch_attempts: Int!
+    error_message: String!
+    last_attempt: DateTime!
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+type Query {
+    voter(id: Int!): Voter
+    voters: [Voter!]!
+}
