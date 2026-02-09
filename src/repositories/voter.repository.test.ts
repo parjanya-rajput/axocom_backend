@@ -20,9 +20,6 @@ jest.mock('../dataconfig/db', () => ({
 async function setupDatabase() {
     const connection = await mockPool.getConnection();
     await connection.query(CREATE_VOTER_TABLE);
-    await connection.query(
-        `ALTER TABLE ${VOTER_TABLE} ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
-    );
     await connection.release();
 }
 
