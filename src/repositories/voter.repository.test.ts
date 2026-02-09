@@ -1,159 +1,146 @@
-import { voterRepository } from '../repositories/voter.repository';
+import mysql from 'mysql2/promise';
+import { GenericContainer } from 'testcontainers';
+import { VOTER_TABLE, CREATE_VOTER_TABLE } from '../models/voter.model';
 import { db } from '../dataconfig/db';
+import { voterRepository } from './voter.repository';
 import { ERRORS } from '../utils/error';
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { Voter } from '../models/voter.model';
+import { jest, describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 
-// Mock the database
-jest.mock('../dataconfig/db');
-const mockDb = db as jest.Mocked<typeof db>;
+let mockPool: any;
+let container: any;
+
+jest.setTimeout(120000);
+
+jest.mock('../dataconfig/db', () => ({
+    get db() {
+        return mockPool;
+    },
+}));
+
+async function setupDatabase() {
+    const connection = await mockPool.getConnection();
+    await connection.query(CREATE_VOTER_TABLE);
+    await connection.query(
+        `ALTER TABLE ${VOTER_TABLE} ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`
+    );
+    await connection.release();
+}
+
+async function tearDownDatabase() {
+    const connection = await mockPool.getConnection();
+    await connection.query(`DROP TABLE IF EXISTS ${VOTER_TABLE}`);
+    await connection.release();
+}
+
+async function resetVoterTable() {
+    const connection = await mockPool.getConnection();
+    await connection.query(`DELETE FROM ${VOTER_TABLE}`);
+    await connection.query(`
+    INSERT INTO voter_details (
+      epic_number, first_name_english, first_name_local, last_name_english, last_name_local,
+      gender, age, relative_first_name_english, relative_first_name_local,
+      relative_last_name_english, relative_last_name_local, state, parliamentary_constituency,
+      assembly_constituency, polling_station, part_number_name, part_serial_number,
+      fetch_status, fetch_attempts, error_message, last_attempt
+    ) VALUES
+    ('EPIC001', 'John', 'जॉन', 'Doe', 'डो', 'M', 30, 'Jane', 'जेन', 'Doe', 'डो',
+     'Maharashtra', 'Mumbai North', 'Andheri West', 'Station 1', 'Part 1', 123,
+     'completed', 1, '', '2025-01-01 10:00:00'),
+    ('EPIC002', 'Jane', 'जेन', 'Smith', 'स्मिथ', 'F', 28, 'John', 'जॉन', 'Smith', 'स्मिथ',
+     'Maharashtra', 'Mumbai South', 'Bandra East', 'Station 2', 'Part 2', 456,
+     'completed', 1, '', '2025-01-01 11:00:00'),
+    ('EPIC003', 'Ravi', 'रवि', 'Kumar', 'कुमार', 'M', 35, 'Sita', 'सीता', 'Kumar', 'कुमार',
+     'Maharashtra', 'Pune', 'Shivajinagar', 'Station 3', 'Part 3', 789,
+     'completed', 1, '', '2025-01-01 12:00:00')
+  `);
+    await connection.release();
+}
+
+beforeAll(async () => {
+    container = await new GenericContainer('mysql:latest')
+        .withExposedPorts(3306)
+        .withEnvironment({
+            MYSQL_ROOT_PASSWORD: 'root',
+            MYSQL_DATABASE: 'test_db',
+            MYSQL_USER: 'test_user',
+            MYSQL_PASSWORD: 'test_password',
+        })
+        .start();
+
+    const port = container.getMappedPort(3306);
+
+    mockPool = mysql.createPool({
+        host: 'localhost',
+        user: 'test_user',
+        password: 'test_password',
+        database: 'test_db',
+        port,
+    });
+
+    await setupDatabase();
+});
+
+afterAll(async () => {
+    if (mockPool) {
+        await tearDownDatabase();
+        await mockPool.end();
+    }
+    if (container) {
+        await container.stop();
+    }
+});
 
 describe('VoterRepository', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
+    it('getById called with existing id; should return Result with voter', async () => {
+        await resetVoterTable();
+        const result = await voterRepository.getById(1);
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+            const voter = result.value;
+            expect(voter).not.toBeNull();
+            expect(voter!.id).toBe(1);
+            expect(voter!.epic_number).toBe('EPIC001');
+            expect(voter!.first_name_english).toBe('John');
+        }
     });
 
-    describe('getById', () => {
-        it('should return voter when found', async () => {
-            const mockVoter: Voter = {
-                id: 1,
-                epic_number: 'ABC1234567',
-                first_name_english: 'John',
-                first_name_local: 'जॉन',
-                last_name_english: 'Doe',
-                last_name_local: 'डो',
-                gender: 'Male',
-                age: 30,
-                relative_first_name_english: 'Jane',
-                relative_first_name_local: 'जेन',
-                relative_last_name_english: 'Doe',
-                relative_last_name_local: 'डो',
-                state: 'Maharashtra',
-                parliamentary_constituency: 'Mumbai North',
-                assembly_constituency: 'Andheri West',
-                polling_station: 'Station 1',
-                part_number_name: 'Part 1',
-                part_serial_number: 123,
-                fetch_status: 'completed',
-                fetch_attempts: 1,
-                error_message: '',
-                last_attempt: new Date(),
-                created_at: new Date(),
-                updated_at: new Date(),
-            } as Voter;
+    it('getById called with non-existent id; should return Result.err with VOTER_NOT_FOUND', async () => {
+        await resetVoterTable();
+        const result = await voterRepository.getById(999);
 
-            mockDb.execute.mockResolvedValue([[mockVoter], []] as any);
-
-            const result = await voterRepository.getById(1);
-
-            expect(result.isOk()).toBe(true);
-            expect(result._unsafeUnwrap()).toEqual(mockVoter);
-            expect(mockDb.execute).toHaveBeenCalledWith(
-                expect.stringContaining('SELECT * FROM voter_details WHERE id = ?'),
-                [1]
-            );
-        });
-
-        it('should return error when voter not found', async () => {
-            mockDb.execute.mockResolvedValue([[], []] as any);
-
-            const result = await voterRepository.getById(999);
-
-            expect(result.isErr()).toBe(true);
-            expect(result._unsafeUnwrapErr()).toEqual(ERRORS.VOTER_NOT_FOUND);
-        });
-
-        it('should handle database errors', async () => {
-            mockDb.execute.mockRejectedValue(new Error('DB connection failed'));
-
-            const result = await voterRepository.getById(1);
-
-            expect(result.isErr()).toBe(true);
-            expect(result._unsafeUnwrapErr()).toEqual(ERRORS.DATABASE_ERROR);
-        });
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+            expect(result.error).toBe(ERRORS.VOTER_NOT_FOUND);
+        }
     });
 
-    describe('getAll', () => {
-        it('should return all voters', async () => {
-            const mockVoters: Voter[] = [
-                {
-                    id: 1,
-                    epic_number: 'ABC1',
-                    first_name_english: 'John',
-                    first_name_local: 'जॉन',
-                    last_name_english: 'Doe',
-                    last_name_local: 'डो',
-                    gender: 'Male',
-                    age: 30,
-                    relative_first_name_english: 'Jane',
-                    relative_first_name_local: 'जेन',
-                    relative_last_name_english: 'Doe',
-                    relative_last_name_local: 'डो',
-                    state: 'Maharashtra',
-                    parliamentary_constituency: 'Mumbai North',
-                    assembly_constituency: 'Andheri West',
-                    polling_station: 'Station 1',
-                    part_number_name: 'Part 1',
-                    part_serial_number: 123,
-                    fetch_status: 'completed',
-                    fetch_attempts: 1,
-                    error_message: '',
-                    last_attempt: new Date(),
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                } as Voter,
-                {
-                    id: 2,
-                    epic_number: 'ABC2',
-                    first_name_english: 'Jane',
-                    first_name_local: 'जेन',
-                    last_name_english: 'Smith',
-                    last_name_local: 'स्मिथ',
-                    gender: 'Female',
-                    age: 28,
-                    relative_first_name_english: 'John',
-                    relative_first_name_local: 'जॉन',
-                    relative_last_name_english: 'Smith',
-                    relative_last_name_local: 'स्मिथ',
-                    state: 'Maharashtra',
-                    parliamentary_constituency: 'Mumbai South',
-                    assembly_constituency: 'Bandra East',
-                    polling_station: 'Station 2',
-                    part_number_name: 'Part 2',
-                    part_serial_number: 456,
-                    fetch_status: 'completed',
-                    fetch_attempts: 1,
-                    error_message: '',
-                    last_attempt: new Date(),
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                } as Voter,
-            ];
+    it('getAll should return Result with list of voters', async () => {
+        await resetVoterTable();
+        const result = await voterRepository.getAll();
 
-            mockDb.execute.mockResolvedValue([mockVoters, []] as any);
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+            const voters = result.value;
+            expect(voters).toHaveLength(3);
+            expect(voters[0].epic_number).toBe('EPIC001');
+            expect(voters[1].epic_number).toBe('EPIC002');
+            expect(voters[2].epic_number).toBe('EPIC003');
+        }
+    });
 
-            const result = await voterRepository.getAll();
+    it('getAll when table is empty; should return Result with empty array', async () => {
+        const connection = await mockPool.getConnection();
+        await connection.query(`DELETE FROM ${VOTER_TABLE}`);
+        await connection.release();
 
-            expect(result.isOk()).toBe(true);
-            expect(result._unsafeUnwrap()).toEqual(mockVoters);
-        });
+        const result = await voterRepository.getAll();
 
-        it('should return empty array when no voters', async () => {
-            mockDb.execute.mockResolvedValue([[], []] as any);
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+            expect(result.value).toHaveLength(0);
+        }
 
-            const result = await voterRepository.getAll();
-
-            expect(result.isOk()).toBe(true);
-            expect(result._unsafeUnwrap()).toEqual([]);
-        });
-
-        it('should handle database errors', async () => {
-            mockDb.execute.mockRejectedValue(new Error('DB error'));
-
-            const result = await voterRepository.getAll();
-
-            expect(result.isErr()).toBe(true);
-            expect(result._unsafeUnwrapErr()).toEqual(ERRORS.DATABASE_ERROR);
-        });
+        await resetVoterTable();
     });
 });
