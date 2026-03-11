@@ -144,6 +144,35 @@ class ElectionCandidateRepository {
     }
 
     /**
+     * Get seats won per election year for a party (aggregate count of Won results per year).
+     */
+    async getSeatsWonPerYearByPartyId(
+        partyId: number
+    ): Promise<Result<{ year: number; seatsWon: number }[], RequestError>> {
+        try {
+            const [rows] = await db.execute<RowDataPacket[]>(
+                `SELECT e.year AS year, COUNT(er.id) AS seatsWon
+                 FROM ${ELECTION_CANDIDATE_TABLE} ec
+                 JOIN election e ON ec.election_id = e.id
+                 LEFT JOIN election_result er ON er.election_candidate_id = ec.id AND er.status = 'Won'
+                 WHERE ec.party_id = ?
+                 GROUP BY e.year
+                 ORDER BY e.year ASC`,
+                [partyId]
+            );
+            return ok(
+                rows.map((r) => ({
+                    year: Number(r.year),
+                    seatsWon: Number(r.seatsWon),
+                }))
+            );
+        } catch (error) {
+            logger.error("Error fetching seats won per year by party:", error);
+            return err(ERRORS.DATABASE_ERROR);
+        }
+    }
+
+    /**
      * Get election candidates by a list of IDs
      */
     async getByIds(

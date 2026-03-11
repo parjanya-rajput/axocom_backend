@@ -129,5 +129,19 @@ export const electionCandidateResolvers = {
             }
             return result.value;
         },
+
+        seatsWonPerYearByParty: async (
+            _: any,
+            { party_id }: { party_id: number }
+        ): Promise<{ year: number; seatsWon: number }[]> => {
+            const result = await electionCandidateRepository.getSeatsWonPerYearByPartyId(party_id);
+            if (result.isErr()) {
+                logger.error('Error fetching seats won per year by party:', result.error);
+                throw new GraphQLError('Failed to fetch seats won per year by party', {
+                    extensions: { code: 'INTERNAL_SERVER_ERROR' },
+                });
+            }
+            return result.value;
+        },
     },
 };

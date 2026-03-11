@@ -24,6 +24,11 @@ type ElectionCandidate {
   party: Party
 }
 
+type YearSeatsWon {
+  year: Int!
+  seatsWon: Int!
+}
+
 type Query {
   election_candidate(id: Int!): ElectionCandidate
   election_candidates: [ElectionCandidate!]!
@@ -33,4 +38,5 @@ type Query {
   electionCandidatesByPartyAndYear(party_id: Int!, year: Int!): [ElectionCandidate!]!
   distinctYearsByParty(party_id: Int!): [Int!]!
   electionCandidatesByIds(ids: [Int!]!): [ElectionCandidate!]!
+  seatsWonPerYearByParty(party_id: Int!): [YearSeatsWon!]!
 }
