@@ -10,6 +10,11 @@ import createLogger from '../../utils/logger';
 
 const logger = createLogger('@voter.resolver');
 
+function csvEscape(value: unknown) {
+    const text = value == null ? "" : String(value);
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
 export const voterResolvers = {
     // Scalar resolvers
     DateTime: DateTimeResolver,
@@ -102,6 +107,90 @@ export const voterResolvers = {
             }
 
             return result.value;
+        },
+
+        votersExportCsv: async (
+            _: any,
+            args: {
+                assembly_constituency: string;
+                parliamentary_constituency?: string | null;
+            }
+        ): Promise<string> => {
+            const { assembly_constituency, parliamentary_constituency } = args;
+
+            if (!assembly_constituency || assembly_constituency === "ALL") {
+                throw new GraphQLError(
+                    'assembly_constituency must be selected (not "ALL")',
+                    { extensions: { code: "BAD_USER_INPUT" } }
+                );
+            }
+
+            const result = await voterRepository.getForExport(
+                assembly_constituency,
+                parliamentary_constituency ?? null
+            );
+
+            if (result.isErr()) {
+                logger.error("Error exporting voters:", result.error);
+                throw new GraphQLError("Failed to export voters CSV", {
+                    extensions: { code: "INTERNAL_SERVER_ERROR" },
+                });
+            }
+
+            const rows = result.value;
+            // Export CSV columns to match `backend/src/models/voter.model.ts` table shape.
+            // Note: GraphQL `Voter` type contains `updated_at`, but it is not present in the DB schema
+            // defined in `CREATE_VOTER_TABLE` and the TS `Voter` model; so we export model fields only.
+            const header = [
+                "epic_number",
+                "first_name_english",
+                "first_name_local",
+                "last_name_english",
+                "last_name_local",
+                "gender",
+                "age",
+                "relative_first_name_english",
+                "relative_first_name_local",
+                "relative_last_name_english",
+                "relative_last_name_local",
+                "state",
+                "parliamentary_constituency",
+                "assembly_constituency",
+                "polling_station",
+                "part_number_name",
+                "part_serial_number",
+            ];
+
+            const csvLines: string[] = [];
+            csvLines.push(header.map(csvEscape).join(","));
+
+            for (const v of rows) {
+                csvLines.push(
+                    [
+                        v.epic_number,
+                        v.first_name_english,
+                        v.first_name_local,
+                        v.last_name_english,
+                        v.last_name_local,
+                        v.gender,
+                        v.age,
+                        v.relative_first_name_english,
+                        v.relative_first_name_local,
+                        v.relative_last_name_english,
+                        v.relative_last_name_local,
+                        v.state,
+                        v.parliamentary_constituency,
+                        v.assembly_constituency,
+                        v.polling_station,
+                        v.part_number_name,
+                        v.part_serial_number,
+                    ]
+                        .map(csvEscape)
+                        .join(",")
+                );
+            }
+
+            return csvLines.join("\n");
         },
     },
 };

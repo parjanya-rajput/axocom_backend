@@ -121,6 +121,44 @@ class VoterRepository {
         }
     }
 
+    /**
+     * Fetch voter rows for CSV export (no pagination).
+     * Note: assembly_constituency is required; parliamentary_constituency is optional.
+     */
+    async getForExport(
+        assembly_constituency: string,
+        parliamentary_constituency?: string | null
+    ): Promise<Result<Voter[], RequestError>> {
+        try {
+            if (!assembly_constituency || assembly_constituency === "ALL") {
+                return err(ERRORS.INVALID_PARAMS);
+            }
+
+            const conditions: string[] = [];
+            const params: (string | number)[] = [];
+
+            conditions.push(`assembly_constituency = ?`);
+            params.push(assembly_constituency);
+
+            if (parliamentary_constituency && parliamentary_constituency !== "ALL") {
+                conditions.push(`parliamentary_constituency = ?`);
+                params.push(parliamentary_constituency);
+            }
+
+            const where = `WHERE ${conditions.join(" AND ")}`;
+
+            const [rows] = await db.execute<Voter[]>(
+                `SELECT * FROM ${VOTER_TABLE} ${where} ORDER BY created_at DESC`,
+                params
+            );
+
+            return ok(rows);
+        } catch (error) {
+            logger.error("Error fetching voters for export:", error);
+            return err(ERRORS.DATABASE_ERROR);
+        }
+    }
+
     async getFilterOptions(): Promise<Result<VoterFilterOptionsResult, RequestError>> {
         try {
             const [assemblyRows] = await db.execute<DistinctValueRow[]>(

@@ -53,6 +53,10 @@ type Query {
     voters: [Voter!]!
     voterAgeBucketsByState(state: String!): [VoterAgeBucket!]!
     voterFilterOptions: VoterFilterOptions!
+    votersExportCsv(
+        assembly_constituency: String!
+        parliamentary_constituency: String
+    ): String!
     votersPaginated(
         page: Int
         limit: Int
