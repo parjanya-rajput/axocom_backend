@@ -17,7 +17,7 @@ CREATE TABLE voter_details (
     state VARCHAR(255) NOT NULL,
     parliamentary_constituency VARCHAR(255) NOT NULL,
     assembly_constituency VARCHAR(255) NOT NULL,
-    polling_station VARCHAR(255) NOT NULL,
+    polling_station VARCHAR(500) NOT NULL,
     part_number_name VARCHAR(255) NOT NULL,
     part_serial_number INT NOT NULL,
     fetch_status VARCHAR(50) NOT NULL, -- required for organisation not user centric

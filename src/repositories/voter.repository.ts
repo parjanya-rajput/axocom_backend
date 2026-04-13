@@ -21,6 +21,7 @@ export type VoterPaginatedFilters = {
     search?: string | null;
     assembly_constituency?: string | null;
     parliamentary_constituency?: string | null;
+    part_number_name?: string | null;
 };
 
 export type PaginatedVoterResult = {
@@ -33,6 +34,11 @@ export type PaginatedVoterResult = {
 export type VoterFilterOptionsResult = {
     assembly_constituencies: string[];
     parliamentary_constituencies: string[];
+};
+
+export type VoterFilterOptionsByAssemblyResult = {
+    parliamentary_constituencies: string[];
+    part_number_names: string[];
 };
 
 class VoterRepository {
@@ -76,7 +82,14 @@ class VoterRepository {
         filters: VoterPaginatedFilters
     ): Promise<Result<PaginatedVoterResult, RequestError>> {
         try {
-            const { page, limit, search, assembly_constituency, parliamentary_constituency } = filters;
+            const {
+                page,
+                limit,
+                search,
+                assembly_constituency,
+                parliamentary_constituency,
+                part_number_name,
+            } = filters;
             const offset = (page - 1) * limit;
 
             const conditions: string[] = [];
@@ -98,6 +111,11 @@ class VoterRepository {
             if (parliamentary_constituency) {
                 conditions.push(`parliamentary_constituency = ?`);
                 params.push(parliamentary_constituency);
+            }
+
+            if (part_number_name) {
+                conditions.push(`part_number_name = ?`);
+                params.push(part_number_name);
             }
 
             const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -185,6 +203,44 @@ class VoterRepository {
             });
         } catch (error) {
             logger.error('Error fetching voter filter options:', error);
+            return err(ERRORS.DATABASE_ERROR);
+        }
+    }
+
+    async getFilterOptionsByAssembly(
+        assembly_constituency: string
+    ): Promise<Result<VoterFilterOptionsByAssemblyResult, RequestError>> {
+        try {
+            const [parliamentaryRows] = await db.execute<DistinctValueRow[]>(
+                `
+                SELECT DISTINCT parliamentary_constituency AS value
+                FROM ${VOTER_TABLE}
+                WHERE assembly_constituency = ?
+                  AND parliamentary_constituency IS NOT NULL
+                  AND parliamentary_constituency != ''
+                ORDER BY parliamentary_constituency
+                `,
+                [assembly_constituency]
+            );
+
+            const [partRows] = await db.execute<DistinctValueRow[]>(
+                `
+                SELECT DISTINCT part_number_name AS value
+                FROM ${VOTER_TABLE}
+                WHERE assembly_constituency = ?
+                  AND part_number_name IS NOT NULL
+                  AND part_number_name != ''
+                ORDER BY part_number_name
+                `,
+                [assembly_constituency]
+            );
+
+            return ok({
+                parliamentary_constituencies: parliamentaryRows.map((row) => row.value),
+                part_number_names: partRows.map((row) => row.value),
+            });
+        } catch (error) {
+            logger.error("Error fetching voter filter options by assembly:", error);
             return err(ERRORS.DATABASE_ERROR);
         }
     }
