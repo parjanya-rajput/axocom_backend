@@ -48,11 +48,17 @@ type VoterFilterOptions {
     parliamentary_constituencies: [String!]!
 }
 
+type VoterFilterOptionsByAssembly {
+    parliamentary_constituencies: [String!]!
+    part_number_names: [String!]!
+}
+
 type Query {
     voter(id: Int!): Voter
     voters: [Voter!]!
     voterAgeBucketsByState(state: String!): [VoterAgeBucket!]!
     voterFilterOptions: VoterFilterOptions!
+    voterFilterOptionsByAssembly(assembly_constituency: String!): VoterFilterOptionsByAssembly!
     votersExportCsv(
         assembly_constituency: String!
         parliamentary_constituency: String
@@ -63,5 +69,6 @@ type Query {
         search: String
         assembly_constituency: String
         parliamentary_constituency: String
+        part_number_name: String
     ): PaginatedVoters!
 }

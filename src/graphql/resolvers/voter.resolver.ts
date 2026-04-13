@@ -4,6 +4,7 @@ import { Voter } from '../../models/voter.model';
 import {
     voterRepository,
     type PaginatedVoterResult,
+    type VoterFilterOptionsByAssemblyResult,
     type VoterFilterOptionsResult,
 } from '../../repositories/voter.repository';
 import createLogger from '../../utils/logger';
@@ -78,6 +79,37 @@ export const voterResolvers = {
             return result.value;
         },
 
+        voterFilterOptionsByAssembly: async (
+            _: any,
+            { assembly_constituency }: { assembly_constituency: string }
+        ): Promise<VoterFilterOptionsByAssemblyResult> => {
+            if (!assembly_constituency || assembly_constituency === "ALL") {
+                return {
+                    parliamentary_constituencies: [],
+                    part_number_names: [],
+                };
+            }
+
+            const result = await voterRepository.getFilterOptionsByAssembly(
+                assembly_constituency
+            );
+
+            if (result.isErr()) {
+                logger.error(
+                    "Error fetching voter filter options by assembly:",
+                    result.error
+                );
+                throw new GraphQLError(
+                    "Failed to fetch voter filter options by assembly",
+                    {
+                        extensions: { code: "INTERNAL_SERVER_ERROR" },
+                    }
+                );
+            }
+
+            return result.value;
+        },
+
         votersPaginated: async (
             _: any,
             args: {
@@ -86,6 +118,7 @@ export const voterResolvers = {
                 search?: string;
                 assembly_constituency?: string;
                 parliamentary_constituency?: string;
+                part_number_name?: string;
             }
         ): Promise<PaginatedVoterResult> => {
             const page = args.page ?? 1;
@@ -97,6 +130,7 @@ export const voterResolvers = {
                 search: args.search ?? null,
                 assembly_constituency: args.assembly_constituency ?? null,
                 parliamentary_constituency: args.parliamentary_constituency ?? null,
+                part_number_name: args.part_number_name ?? null,
             });
 
             if (result.isErr()) {
