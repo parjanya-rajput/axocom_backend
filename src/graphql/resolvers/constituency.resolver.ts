@@ -3,6 +3,8 @@ import { DateTimeResolver } from 'graphql-scalars';
 import createLogger from '../../utils/logger';
 import { Constituency } from '../../models/constituency.model';
 import { constituencyRepository } from '../../repositories/constituency.repository';
+import type { GraphQLContext } from '../context';
+import { requireAuth } from '../context';
 
 const logger = createLogger('@constituency.resolver');
 
@@ -11,7 +13,8 @@ export const constituencyResolvers = {
     DateTime: DateTimeResolver,
 
     Query: {
-        constituency: async (_: any, { id }: { id: number }): Promise<Constituency | null> => {
+        constituency: async (_: any, { id }: { id: number }, context?: GraphQLContext): Promise<Constituency | null> => {
+            if (context) requireAuth(context);
             const result = await constituencyRepository.getById(id);
 
             if (result.isErr()) {
@@ -24,7 +27,8 @@ export const constituencyResolvers = {
             return result.value;
         },
 
-        constituencies: async (): Promise<Constituency[]> => {
+        constituencies: async (_: any = null, __: any = null, context?: GraphQLContext): Promise<Constituency[]> => {
+            if (context) requireAuth(context);
             const result = await constituencyRepository.getAll();
 
             if (result.isErr()) {
@@ -36,7 +40,8 @@ export const constituencyResolvers = {
 
             return result.value;
         },
-        constituenciesByState: async (_: any, { state }: { state: string }): Promise<Constituency[]> => {
+        constituenciesByState: async (_: any, { state }: { state: string }, context?: GraphQLContext): Promise<Constituency[]> => {
+            if (context) requireAuth(context);
             const result = await constituencyRepository.getByState(state);
             if (result.isErr()) {
                 logger.error('Error fetching constituencies by state:', result.error);

@@ -62,6 +62,7 @@ type Query {
     votersExportCsv(
         assembly_constituency: String!
         parliamentary_constituency: String
+        part_number_name: String
     ): String!
     votersPaginated(
         page: Int

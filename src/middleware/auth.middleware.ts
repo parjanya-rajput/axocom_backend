@@ -20,3 +20,29 @@ export const optionalAuth = (req: Request, _res: Response, next: NextFunction) =
         next();
     }
 };
+
+export const requireAuthMiddleware = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            res.status(401).json({
+                success: false,
+                message: 'Unauthorized',
+            });
+            return;
+        }
+
+        const token = authHeader.substring(7);
+        req.user = decodeAuthToken(token);
+        next();
+    } catch {
+        res.status(401).json({
+            success: false,
+            message: 'Unauthorized',
+        });
+    }
+};

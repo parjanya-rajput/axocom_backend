@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 import { DateTimeResolver } from 'graphql-scalars';
 import bcrypt from 'bcrypt';
 import { userRepository } from '../../repositories/user.repository';
+import { constituencyRepository } from '../../repositories/constituency.repository';
 import { createAuthToken, createRefreshToken } from '../../utils/jwt';
 import { convertUserToView } from '../../models/user.model';
 import type { GraphQLContext } from '../context';
@@ -20,16 +21,34 @@ export const authResolvers = {
             if (result.isErr() || !result.value) return null;
             return convertUserToView(result.value);
         },
+        signup_constituencies: async () => {
+            const result = await constituencyRepository.getAll();
+            if (result.isErr()) {
+                throw new GraphQLError('Failed to fetch constituencies', {
+                    extensions: { code: 'INTERNAL_SERVER_ERROR' },
+                });
+            }
+            return result.value.map((item) => item.name);
+        },
     },
 
     Mutation: {
         signup: async (
             _: unknown,
-            { input }: { input: { email: string; password: string; name?: string | null } }
+            {
+                input,
+            }: {
+                input: {
+                    email: string;
+                    password: string;
+                    name: string;
+                    default_assembly_constituency: string;
+                };
+            }
         ) => {
-            const { email, password, name } = input;
-            if (!email?.trim() || !password) {
-                throw new GraphQLError('Email and password are required', {
+            const { email, password, name, default_assembly_constituency } = input;
+            if (!email?.trim() || !password || !name?.trim() || !default_assembly_constituency?.trim()) {
+                throw new GraphQLError('Email, password, name and constituency are required', {
                     extensions: { code: 'BAD_USER_INPUT', errorCode: 10002 },
                 });
             }
@@ -38,8 +57,26 @@ export const authResolvers = {
                     extensions: { code: 'BAD_USER_INPUT', errorCode: 20012 },
                 });
             }
+            const constituencyResult = await constituencyRepository.getByName(
+                default_assembly_constituency.trim()
+            );
+            if (constituencyResult.isErr()) {
+                throw new GraphQLError('Could not validate constituency', {
+                    extensions: { code: 'INTERNAL_SERVER_ERROR' },
+                });
+            }
+            if (!constituencyResult.value) {
+                throw new GraphQLError('Please select a valid constituency', {
+                    extensions: { code: 'BAD_USER_INPUT', errorCode: 10002 },
+                });
+            }
             const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
-            const result = await userRepository.create({ email: email.trim().toLowerCase(), password_hash, name: name?.trim() || null });
+            const result = await userRepository.create({
+                email: email.trim().toLowerCase(),
+                password_hash,
+                name: name.trim(),
+                default_assembly_constituency: constituencyResult.value.name,
+            });
             if (result.isErr()) {
                 if (result.error.message === 'EMAIL_ALREADY_EXISTS') {
                     throw new GraphQLError('An account with this email already exists', {
@@ -49,9 +86,14 @@ export const authResolvers = {
                 throw new GraphQLError('Signup failed', { extensions: { code: 'INTERNAL_SERVER_ERROR' } });
             }
             const user = result.value;
-            const token = createAuthToken({ id: user.id, is_admin: user.is_admin, email: user.email, name: user.name ?? undefined });
+            const access_token = createAuthToken({
+                id: user.id,
+                is_admin: user.is_admin,
+                email: user.email,
+                name: user.name,
+            });
             const refresh_token = createRefreshToken({ id: user.id, is_admin: user.is_admin, email: user.email });
-            return { token, refresh_token, user: convertUserToView(user) };
+            return { access_token, refresh_token, user: convertUserToView(user) };
         },
 
         login: async (
@@ -80,9 +122,14 @@ export const authResolvers = {
                     extensions: { code: 'UNAUTHORIZED', errorCode: 40004 },
                 });
             }
-            const token = createAuthToken({ id: user.id, is_admin: user.is_admin, email: user.email, name: user.name ?? undefined });
+            const access_token = createAuthToken({
+                id: user.id,
+                is_admin: user.is_admin,
+                email: user.email,
+                name: user.name,
+            });
             const refresh_token = createRefreshToken({ id: user.id, is_admin: user.is_admin, email: user.email });
-            return { token, refresh_token, user: convertUserToView(user) };
+            return { access_token, refresh_token, user: convertUserToView(user) };
         },
     },
 };

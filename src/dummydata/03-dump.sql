@@ -233,8 +233,9 @@ CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `email` varchar(255) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
-  `name` varchar(255) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
   `is_admin` tinyint(1) NOT NULL DEFAULT '0',
+  `default_assembly_constituency` varchar(255) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -249,7 +250,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'user@example.com','$2b$12$OFSJ2LtN/6XTUmp0T3T7QenqjBCqcOQlbqjSraQshLGgnMtQEBkAe','Test',0,'2026-01-31 07:03:52','2026-01-31 07:03:52');
+INSERT INTO `users` VALUES (1,'user@example.com','$2b$12$OFSJ2LtN/6XTUmp0T3T7QenqjBCqcOQlbqjSraQshLGgnMtQEBkAe','Test',0,'Bangalore South','2026-01-31 07:03:52','2026-01-31 07:03:52');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 

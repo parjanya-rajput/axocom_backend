@@ -3,7 +3,8 @@ scalar DateTime
 type User {
     id: Int!
     email: String!
-    name: String
+    name: String!
+    default_assembly_constituency: String!
     created_at: DateTime!
     updated_at: DateTime!
 }
@@ -17,7 +18,8 @@ type AuthPayload {
 input SignupInput {
     email: String!
     password: String!
-    name: String
+    name: String!
+    default_assembly_constituency: String!
 }
 
 input LoginInput {
@@ -32,4 +34,5 @@ type Mutation {
 
 type Query {
     me: User
+    signup_constituencies: [String!]!
 }

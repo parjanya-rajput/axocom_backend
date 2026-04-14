@@ -3,6 +3,8 @@ import { DateTimeResolver } from 'graphql-scalars';
 import createLogger from '../../utils/logger';
 import { Election } from '../../models/election.model';
 import { electionRepository } from '../../repositories/election.repository';
+import type { GraphQLContext } from '../context';
+import { requireAuth } from '../context';
 
 const logger = createLogger('@election.resolver');
 
@@ -11,7 +13,8 @@ export const electionResolvers = {
     DateTime: DateTimeResolver,
 
     Query: {
-        election: async (_: any, { id }: { id: number }): Promise<Election | null> => {
+        election: async (_: any, { id }: { id: number }, context?: GraphQLContext): Promise<Election | null> => {
+            if (context) requireAuth(context);
             const result = await electionRepository.getById(id);
 
             if (result.isErr()) {
@@ -24,7 +27,8 @@ export const electionResolvers = {
             return result.value;
         },
 
-        elections: async (): Promise<Election[]> => {
+        elections: async (_: any = null, __: any = null, context?: GraphQLContext): Promise<Election[]> => {
+            if (context) requireAuth(context);
             const result = await electionRepository.getAll();
 
             if (result.isErr()) {
@@ -39,8 +43,10 @@ export const electionResolvers = {
 
         electionByConstituencyAndYear: async (
             _: any,
-            { constituency_id, year }: { constituency_id: number; year: number }
+            { constituency_id, year }: { constituency_id: number; year: number },
+            context?: GraphQLContext
         ): Promise<Election | null> => {
+            if (context) requireAuth(context);
             const result = await electionRepository.getByConstituencyIdAndYear(constituency_id, year);
             if (result.isErr()) {
                 logger.error('Error fetching election:', result.error);
@@ -53,8 +59,10 @@ export const electionResolvers = {
 
         electionsByConstituencyId: async (
             _: any,
-            { constituency_id }: { constituency_id: number }
+            { constituency_id }: { constituency_id: number },
+            context?: GraphQLContext
         ): Promise<Election[]> => {
+            if (context) requireAuth(context);
             const result = await electionRepository.getByConstituencyId(constituency_id);
             if (result.isErr()) {
                 logger.error('Error fetching elections by constituency:', result.error);
@@ -67,8 +75,10 @@ export const electionResolvers = {
 
         electionsByStateAndYear: async (
             _: any,
-            { state, year }: { state: string; year: number }
+            { state, year }: { state: string; year: number },
+            context?: GraphQLContext
         ): Promise<Election[]> => {
+            if (context) requireAuth(context);
             const result = await electionRepository.getByStateAndYear(state, year);
             if (result.isErr()) {
                 logger.error('Error fetching elections by state and year:', result.error);

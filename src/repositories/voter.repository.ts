@@ -104,8 +104,8 @@ class VoterRepository {
             }
 
             if (assembly_constituency) {
-                conditions.push(`assembly_constituency = ?`);
-                params.push(assembly_constituency);
+                conditions.push(`(assembly_constituency = ? OR assembly_constituency LIKE ?)`);
+                params.push(assembly_constituency, `%${assembly_constituency}%`);
             }
 
             if (parliamentary_constituency) {
@@ -141,11 +141,12 @@ class VoterRepository {
 
     /**
      * Fetch voter rows for CSV export (no pagination).
-     * Note: assembly_constituency is required; parliamentary_constituency is optional.
+     * Note: assembly_constituency is required; parliamentary_constituency and part_number_name are optional.
      */
     async getForExport(
         assembly_constituency: string,
-        parliamentary_constituency?: string | null
+        parliamentary_constituency?: string | null,
+        part_number_name?: string | null
     ): Promise<Result<Voter[], RequestError>> {
         try {
             if (!assembly_constituency || assembly_constituency === "ALL") {
@@ -157,10 +158,16 @@ class VoterRepository {
 
             conditions.push(`assembly_constituency = ?`);
             params.push(assembly_constituency);
+            conditions[conditions.length - 1] = `(assembly_constituency = ? OR assembly_constituency LIKE ?)`;
+            params.push(`%${assembly_constituency}%`);
 
             if (parliamentary_constituency && parliamentary_constituency !== "ALL") {
                 conditions.push(`parliamentary_constituency = ?`);
                 params.push(parliamentary_constituency);
+            }
+            if (part_number_name && part_number_name !== "ALL") {
+                conditions.push(`part_number_name = ?`);
+                params.push(part_number_name);
             }
 
             const where = `WHERE ${conditions.join(" AND ")}`;
@@ -215,24 +222,24 @@ class VoterRepository {
                 `
                 SELECT DISTINCT parliamentary_constituency AS value
                 FROM ${VOTER_TABLE}
-                WHERE assembly_constituency = ?
+                WHERE (assembly_constituency = ? OR assembly_constituency LIKE ?)
                   AND parliamentary_constituency IS NOT NULL
                   AND parliamentary_constituency != ''
                 ORDER BY parliamentary_constituency
                 `,
-                [assembly_constituency]
+                [assembly_constituency, `%${assembly_constituency}%`]
             );
 
             const [partRows] = await db.execute<DistinctValueRow[]>(
                 `
                 SELECT DISTINCT part_number_name AS value
                 FROM ${VOTER_TABLE}
-                WHERE assembly_constituency = ?
+                WHERE (assembly_constituency = ? OR assembly_constituency LIKE ?)
                   AND part_number_name IS NOT NULL
                   AND part_number_name != ''
                 ORDER BY part_number_name
                 `,
-                [assembly_constituency]
+                [assembly_constituency, `%${assembly_constituency}%`]
             );
 
             return ok({

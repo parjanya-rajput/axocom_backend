@@ -17,6 +17,7 @@ import { notFoundHandler } from './middleware/error.middleware';
 // import candidateRouter from './rest/routes/candidate.route';
 import { optionalAuth } from './middleware/auth.middleware';
 import { createLoaders } from './graphql/loaders/dataloader';
+import voterRoutes from './rest/routes/voter.route';
 // async function startGraphQLServer() {
 //     const typeDefs = readFileSync(
 //         join(process.cwd(), 'src/graphql/schema/candidate.schema.graphql'),
@@ -71,7 +72,7 @@ async function startServer() {
 
     //routes
     // app.use('/api/candidates', candidateRouter);
-    // app.use('/api/voters', voterRoutes);
+    app.use('/api/voters', voterRoutes);
 
     const apollo = new ApolloServer({
         typeDefs,

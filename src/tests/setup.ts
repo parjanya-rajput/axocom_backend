@@ -2,6 +2,7 @@ import { ApolloServer } from '@apollo/server';
 import { buildGraphQL } from '../../src/graphql/loaders/graphql.loader';
 import type { GraphQLContext } from '../../src/graphql/context';
 import type { TokenData } from '../../src/utils/jwt';
+import { createLoaders } from '../../src/graphql/loaders/dataloader';
 
 // Create a test server for integration tests
 export function createTestServer() {
@@ -14,8 +15,8 @@ export function createTestServer() {
 
 // Create a test context for integration tests
 export function createContext(overrides: { user?: TokenData | null; req?: any } = {}) {
-    const { user = null, req = {} } = overrides;
-    return { req, user } as GraphQLContext;
+    const { user = { id: 1, is_admin: false, email: 'test@example.com' }, req = {} } = overrides;
+    return { req, user, loaders: createLoaders() } as GraphQLContext;
 }
 
 // Clean up console warnings during tests
