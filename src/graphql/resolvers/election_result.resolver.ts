@@ -3,6 +3,8 @@ import { DateTimeResolver } from 'graphql-scalars';
 import createLogger from '../../utils/logger';
 import { ElectionResult } from '../../models/election_result.model';
 import { electionResultRepository } from '../../repositories/election_result.repository';
+import type { GraphQLContext } from '../context';
+import { requireAuth } from '../context';
 
 const logger = createLogger('@election_result.resolver');
 
@@ -11,7 +13,8 @@ export const electionResultResolvers = {
     DateTime: DateTimeResolver,
 
     Query: {
-        election_result: async (_: any, { id }: { id: number }): Promise<ElectionResult | null> => {
+        election_result: async (_: any, { id }: { id: number }, context?: GraphQLContext): Promise<ElectionResult | null> => {
+            if (context) requireAuth(context);
             const result = await electionResultRepository.getById(id);
 
             if (result.isErr()) {
@@ -24,7 +27,8 @@ export const electionResultResolvers = {
             return result.value;
         },
 
-        election_results: async (): Promise<ElectionResult[]> => {
+        election_results: async (_: any = null, __: any = null, context?: GraphQLContext): Promise<ElectionResult[]> => {
+            if (context) requireAuth(context);
             const result = await electionResultRepository.getAll();
 
             if (result.isErr()) {
@@ -37,7 +41,8 @@ export const electionResultResolvers = {
             return result.value;
         },
 
-        constituency_results: async (_: any, { constituency_id, election_year }: { constituency_id: number; election_year: number }) => {
+        constituency_results: async (_: any, { constituency_id, election_year }: { constituency_id: number; election_year: number }, context?: GraphQLContext) => {
+            if (context) requireAuth(context);
             const result = await electionResultRepository.getByConstituencyIdAndYear(constituency_id, election_year);
             if (result.isErr()) {
                 throw new GraphQLError('Failed to fetch constituency results', {
@@ -49,8 +54,10 @@ export const electionResultResolvers = {
 
         election_resultsByCandidateIds: async (
             _: any,
-            { election_candidate_ids }: { election_candidate_ids: number[] }
+            { election_candidate_ids }: { election_candidate_ids: number[] },
+            context?: GraphQLContext
         ): Promise<ElectionResult[]> => {
+            if (context) requireAuth(context);
             const result = await electionResultRepository.getByElectionCandidateIds(
                 election_candidate_ids
             );

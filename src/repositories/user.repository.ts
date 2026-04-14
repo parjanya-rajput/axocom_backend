@@ -7,11 +7,16 @@ import { ERRORS, RequestError } from '../utils/error';
 const logger = createLogger('@user.repository');
 
 class UserRepository {
-    async create(data: { email: string; password_hash: string; name: string }): Promise<Result<User, RequestError>> {
+    async create(data: {
+        email: string;
+        password_hash: string;
+        name: string;
+        default_assembly_constituency: string;
+    }): Promise<Result<User, RequestError>> {
         try {
             const [result] = await db.execute<import('mysql2').ResultSetHeader>(
-                `INSERT INTO ${USER_TABLE} (email, password_hash, name) VALUES (?, ?, ?)`,
-                [data.email, data.password_hash, data.name]
+                `INSERT INTO ${USER_TABLE} (email, password_hash, name, default_assembly_constituency) VALUES (?, ?, ?, ?)`,
+                [data.email, data.password_hash, data.name, data.default_assembly_constituency]
             );
             const [rows] = await db.execute<User[]>(`SELECT * FROM ${USER_TABLE} WHERE id = ?`, [result.insertId]);
             return ok(rows[0]);

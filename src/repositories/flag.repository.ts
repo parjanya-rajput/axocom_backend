@@ -8,11 +8,11 @@ import createLogger from "../utils/logger";
 const logger = createLogger("@flag.repository");
 
 class FlagRepository {
-    async create(jsonData: string): Promise<Result<FlagRow, RequestError>> {
+    async create(email: string, jsonData: string): Promise<Result<FlagRow, RequestError>> {
         try {
             const [result] = await db.execute<ResultSetHeader>(
-                `INSERT INTO ${FLAG_TABLE} (data) VALUES (?)`,
-                [jsonData]
+                `INSERT INTO ${FLAG_TABLE} (email, data) VALUES (?, ?)`,
+                [email, jsonData]
             );
 
             const [rows] = await db.execute<FlagRow[]>(
@@ -29,6 +29,34 @@ class FlagRepository {
             });
         } catch (error) {
             logger.error("Error creating flag entry:", error);
+            return err(ERRORS.DATABASE_ERROR);
+        }
+    }
+
+    async getByEmailAndUrl(
+        email: string,
+        url: string
+    ): Promise<Result<FlagRow[], RequestError>> {
+        try {
+            const [rows] = await db.execute<FlagRow[]>(
+                `SELECT * FROM ${FLAG_TABLE}
+                 WHERE email = ?
+                   AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.url')) = ?
+                 ORDER BY created_at DESC`,
+                [email, url]
+            );
+
+            return ok(
+                rows.map((row) => ({
+                    ...row,
+                    data:
+                        typeof row.data === "string"
+                            ? row.data
+                            : JSON.stringify(row.data),
+                }))
+            );
+        } catch (error) {
+            logger.error("Error fetching flag entries by email and url:", error);
             return err(ERRORS.DATABASE_ERROR);
         }
     }

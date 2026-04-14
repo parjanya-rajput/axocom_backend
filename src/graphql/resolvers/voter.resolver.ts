@@ -8,20 +8,19 @@ import {
     type VoterFilterOptionsResult,
 } from '../../repositories/voter.repository';
 import createLogger from '../../utils/logger';
+import type { GraphQLContext } from '../context';
+import { requireAuth } from '../context';
+import { buildVotersCsv } from '../../utils/voter-csv';
 
 const logger = createLogger('@voter.resolver');
-
-function csvEscape(value: unknown) {
-    const text = value == null ? "" : String(value);
-    return `"${text.replace(/"/g, '""')}"`;
-}
 
 export const voterResolvers = {
     // Scalar resolvers
     DateTime: DateTimeResolver,
 
     Query: {
-        voter: async (_: any, { id }: { id: number }): Promise<Voter | null> => {
+        voter: async (_: any, { id }: { id: number }, context?: GraphQLContext): Promise<Voter | null> => {
+            if (context) requireAuth(context);
             const result = await voterRepository.getById(id);
 
             if (result.isErr()) {
@@ -34,7 +33,8 @@ export const voterResolvers = {
             return result.value;
         },
 
-        voters: async (): Promise<Voter[]> => {
+        voters: async (_: any = null, __: any = null, context?: GraphQLContext): Promise<Voter[]> => {
+            if (context) requireAuth(context);
             const result = await voterRepository.getAll();
 
             if (result.isErr()) {
@@ -48,8 +48,10 @@ export const voterResolvers = {
         },
         voterAgeBucketsByState: async (
             _: any,
-            { state }: { state: string }
+            { state }: { state: string },
+            context?: GraphQLContext
         ): Promise<{ group: string; total: number }[]> => {
+            if (context) requireAuth(context);
             const result = await voterRepository.getAgeBucketsByState(state);
 
             if (result.isErr()) {
@@ -66,7 +68,8 @@ export const voterResolvers = {
             }));
         },
 
-        voterFilterOptions: async (): Promise<VoterFilterOptionsResult> => {
+        voterFilterOptions: async (_: any, __: any, context?: GraphQLContext): Promise<VoterFilterOptionsResult> => {
+            if (context) requireAuth(context);
             const result = await voterRepository.getFilterOptions();
 
             if (result.isErr()) {
@@ -81,8 +84,10 @@ export const voterResolvers = {
 
         voterFilterOptionsByAssembly: async (
             _: any,
-            { assembly_constituency }: { assembly_constituency: string }
+            { assembly_constituency }: { assembly_constituency: string },
+            context?: GraphQLContext
         ): Promise<VoterFilterOptionsByAssemblyResult> => {
+            if (context) requireAuth(context);
             if (!assembly_constituency || assembly_constituency === "ALL") {
                 return {
                     parliamentary_constituencies: [],
@@ -119,8 +124,10 @@ export const voterResolvers = {
                 assembly_constituency?: string;
                 parliamentary_constituency?: string;
                 part_number_name?: string;
-            }
+            },
+            context?: GraphQLContext
         ): Promise<PaginatedVoterResult> => {
+            if (context) requireAuth(context);
             const page = args.page ?? 1;
             const limit = args.limit ?? 10;
 
@@ -148,9 +155,12 @@ export const voterResolvers = {
             args: {
                 assembly_constituency: string;
                 parliamentary_constituency?: string | null;
-            }
+                part_number_name?: string | null;
+            },
+            context?: GraphQLContext
         ): Promise<string> => {
-            const { assembly_constituency, parliamentary_constituency } = args;
+            if (context) requireAuth(context);
+            const { assembly_constituency, parliamentary_constituency, part_number_name } = args;
 
             if (!assembly_constituency || assembly_constituency === "ALL") {
                 throw new GraphQLError(
@@ -161,7 +171,8 @@ export const voterResolvers = {
 
             const result = await voterRepository.getForExport(
                 assembly_constituency,
-                parliamentary_constituency ?? null
+                parliamentary_constituency ?? null,
+                part_number_name ?? null
             );
 
             if (result.isErr()) {
@@ -171,60 +182,7 @@ export const voterResolvers = {
                 });
             }
 
-            const rows = result.value;
-            // Export CSV columns to match `backend/src/models/voter.model.ts` table shape.
-            // Note: GraphQL `Voter` type contains `updated_at`, but it is not present in the DB schema
-            // defined in `CREATE_VOTER_TABLE` and the TS `Voter` model; so we export model fields only.
-            const header = [
-                "epic_number",
-                "first_name_english",
-                "first_name_local",
-                "last_name_english",
-                "last_name_local",
-                "gender",
-                "age",
-                "relative_first_name_english",
-                "relative_first_name_local",
-                "relative_last_name_english",
-                "relative_last_name_local",
-                "state",
-                "parliamentary_constituency",
-                "assembly_constituency",
-                "polling_station",
-                "part_number_name",
-                "part_serial_number",
-            ];
-
-            const csvLines: string[] = [];
-            csvLines.push(header.map(csvEscape).join(","));
-
-            for (const v of rows) {
-                csvLines.push(
-                    [
-                        v.epic_number,
-                        v.first_name_english,
-                        v.first_name_local,
-                        v.last_name_english,
-                        v.last_name_local,
-                        v.gender,
-                        v.age,
-                        v.relative_first_name_english,
-                        v.relative_first_name_local,
-                        v.relative_last_name_english,
-                        v.relative_last_name_local,
-                        v.state,
-                        v.parliamentary_constituency,
-                        v.assembly_constituency,
-                        v.polling_station,
-                        v.part_number_name,
-                        v.part_serial_number,
-                    ]
-                        .map(csvEscape)
-                        .join(",")
-                );
-            }
-
-            return csvLines.join("\n");
+            return buildVotersCsv(result.value);
         },
     },
 };

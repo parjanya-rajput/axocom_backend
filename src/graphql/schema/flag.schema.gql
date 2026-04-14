@@ -1,9 +1,14 @@
 type FlagData {
     id: Int!
+    email: String!
     data: String!
     created_at: DateTime!
 }
 
+type Query {
+    myFlagDataByUrl(url: String!): [FlagData!]!
+}
+
 type Mutation {
-    submitFlagData(data: String!): FlagData!
+    submitFlagData(data: String!, email: String!): FlagData!
 }

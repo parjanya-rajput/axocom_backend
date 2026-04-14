@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    default_assembly_constituency VARCHAR(255) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email)
@@ -19,6 +21,8 @@ export interface User extends RowDataPacket {
     email: string;
     password_hash: string;
     name: string;
+    is_admin: boolean;
+    default_assembly_constituency: string;
     created_at: Date;
     updated_at: Date;
 }
@@ -27,7 +31,9 @@ export interface UserView {
     id: number;
     email: string;
     name: string;
+    default_assembly_constituency: string;
     created_at: Date;
+    updated_at: Date;
 }
 
 export function convertUserToView(user: User): UserView {
@@ -35,6 +41,8 @@ export function convertUserToView(user: User): UserView {
         id: user.id,
         email: user.email,
         name: user.name,
+        default_assembly_constituency: user.default_assembly_constituency,
         created_at: user.created_at,
+        updated_at: user.updated_at,
     };
 }

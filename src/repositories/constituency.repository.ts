@@ -58,6 +58,19 @@ class ConstituencyRepository {
         }
     }
 
+    async getByName(name: string): Promise<Result<Constituency | null, RequestError>> {
+        try {
+            const [rows] = await db.execute<Constituency[]>(
+                `SELECT * FROM ${CONSTITUENCY_TABLE} WHERE name = ? LIMIT 1`,
+                [name]
+            );
+            return ok(rows[0] ?? null);
+        } catch (error) {
+            logger.error('Error fetching constituency by name:', error);
+            return err(ERRORS.DATABASE_ERROR);
+        }
+    }
+
 }
 
 // Export singleton instance
